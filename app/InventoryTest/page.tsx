@@ -119,12 +119,15 @@ const InventoryPage = () => {
       <Card>
         {/* 5. Añadir el SearchBar en el Card.Header */}
         <Card.Header>
-          <div className="w-full max-w-md">
-            <SearchBar
-              placeholder="Buscar por nombre o categoría..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          <div className='flex'>
+            <p className='text-3xl text-bold'>Insumos en bodega</p>
+            <div className="w-full max-w-md ml-auto">
+              <SearchBar
+                placeholder=""
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
           </div>
         </Card.Header>
         <Card.Body>

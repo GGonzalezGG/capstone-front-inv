@@ -48,7 +48,7 @@ const SearchBar = ({
       <Input
         id={id}
         type="search" // Usar type="search" es semánticamente correcto
-        className="w-full" // Asegura que el input ocupe todo el wrapper
+        className="w-full bg-zinc-50 text-blue-700" // Asegura que el input ocupe todo el wrapper
         // Corregido: Se añade el label requerido por Input, usando el placeholder
         // Asumimos que el componente Input ocultará visualmente este label
         // o lo mostrará. En cualquier caso, es requerido para accesibilidad.

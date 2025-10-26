@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * @typedef {'primary' | 'secondary' | 'danger'} ButtonVariant - The visual style of the button.
+ * @typedef {'primary' | 'secondary' | 'danger' | 'success'} ButtonVariant - The visual style of the button.
  */
 
 /**
@@ -15,9 +15,9 @@ import React from 'react';
  */
 
 /**
- * A versatile Button component with multiple variants.
+ * An enhanced Button component with vibrant colors and smooth interactions.
  */
-type ButtonVariant = 'primary' | 'secondary' | 'danger';
+type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'success';
 
 interface ButtonProps {
   children: React.ReactNode;
@@ -36,27 +36,40 @@ const Button = ({
   disabled = false,
   className = '',
 }: ButtonProps) => {
-  // Base styles for all buttons
+  // Base styles with enhanced effects
   const baseStyles = `
-    inline-flex items-center justify-center px-4 py-2 rounded-md font-semibold 
-    tracking-wide text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 
-    transition-all duration-200 ease-in-out shadow-sm disabled:cursor-not-allowed
+    inline-flex items-center justify-center px-4 py-2 rounded-lg font-semibold
+    tracking-wide text-sm focus:outline-none focus:ring-2 focus:ring-offset-2
+    transition-all duration-200 ease-in-out shadow-md
+    disabled:cursor-not-allowed disabled:opacity-50
+    active:scale-95 transform
   `;
 
-  // Styles specific to each variant
+  // Enhanced variant styles with brighter, modern colors
   const variantStyles = {
     primary: `
-      bg-lime-700 text-white border border-transparent 
-      hover:bg-lime-800 focus:ring-lime-500 disabled:bg-lime-300
+      bg-gradient-to-r from-lime-600 to-lime-700 text-white border border-transparent
+      hover:from-lime-700 hover:to-lime-800 hover:shadow-lg
+      focus:ring-lime-500 focus:ring-offset-2
+      disabled:from-lime-300 disabled:to-lime-300 disabled:shadow-none
     `,
     secondary: `
-      bg-transparent text-blue-700 border border-blue-700 
-      hover:bg-blue-50 focus:ring-blue-500 
-      disabled:border-gray-300 disabled:text-gray-400 disabled:bg-gray-100
+      bg-gradient-to-r from-blue-500 to-blue-600 text-white border border-transparent
+      hover:from-blue-600 hover:to-blue-700 hover:shadow-lg
+      focus:ring-blue-500 focus:ring-offset-2
+      disabled:from-blue-300 disabled:to-blue-300 disabled:shadow-none
     `,
     danger: `
-      bg-red-600 text-white border border-transparent 
-      hover:bg-red-700 focus:ring-red-500 disabled:bg-red-300
+      bg-gradient-to-r from-red-500 to-red-600 text-white border border-transparent
+      hover:from-red-600 hover:to-red-700 hover:shadow-lg
+      focus:ring-red-500 focus:ring-offset-2
+      disabled:from-red-300 disabled:to-red-300 disabled:shadow-none
+    `,
+    success: `
+      bg-gradient-to-r from-emerald-500 to-emerald-600 text-white border border-transparent
+      hover:from-emerald-600 hover:to-emerald-700 hover:shadow-lg
+      focus:ring-emerald-500 focus:ring-offset-2
+      disabled:from-emerald-300 disabled:to-emerald-300 disabled:shadow-none
     `,
   };
 
@@ -75,47 +88,3 @@ const Button = ({
 };
 
 export default Button;
-
-/*
-  -----------------------------
-  --- EJEMPLO DE USO ---
-  -----------------------------
-
-  import Button from './components/ui/Button';
-
-  const ButtonShowcase = () => {
-    return (
-      <div className="p-10 bg-gray-100 flex flex-wrap gap-4 items-center">
-        
-        <div>
-          <p className="font-mono text-sm mb-1">Primary</p>
-          <Button onClick={() => alert('Primary Clicked!')}>
-            Acción Principal
-          </Button>
-        </div>
-
-        <div>
-          <p className="font-mono text-sm mb-1">Secondary</p>
-          <Button variant="secondary" onClick={() => alert('Secondary Clicked!')}>
-            Acción Secundaria
-          </Button>
-        </div>
-
-        <div>
-          <p className="font-mono text-sm mb-1">Danger</p>
-          <Button variant="danger" onClick={() => alert('Danger Clicked!')}>
-            Eliminar Insumo
-          </Button>
-        </div>
-        
-        <div>
-          <p className="font-mono text-sm mb-1">Disabled</p>
-          <Button disabled>
-            Botón Deshabilitado
-          </Button>
-        </div>
-
-      </div>
-    );
-  }
-*/

@@ -1,24 +1,51 @@
 "use client";
   import React, { useState } from 'react';
   import Link from 'next/link';
-  import RequestList, { RequestSummary, RequestStatus } from '../components/features/RequestList';
+  import RequestList, { RequestSummary, RequestStatus, RequestItemDetail } from '../components/features/RequestList';
   import Button from '../components/ui/Button';
   import Modal from '../components/ui/Modal';
-  import Card from '../components/ui/Card';
-  import Spinner from '../components/ui/Spinner'; // Importar Spinner para el modal
+  import Spinner from '../components/ui/Spinner';
   
-  // Datos simulados de peticiones
+  // Datos simulados de peticiones (con lista de items)
   const mockRequestData: RequestSummary[] = [
-    { id: 'req1', patientName: 'Juan Pérez', requesterName: 'Enf. Clara', status: 'pending', createdAt: '2023-10-23T10:30:00Z', itemCount: 3 },
-    { id: 'req2', patientName: 'María González', requesterName: 'Enf. Juan', status: 'approved', createdAt: '2023-10-22T14:00:00Z', itemCount: 2 },
-    { id: 'req3', patientName: 'Carlos Sánchez', requesterName: 'Enf. Clara', status: 'rejected', createdAt: '2023-10-21T09:15:00Z', itemCount: 5 },
-    { id: 'req4', patientName: 'Ana Torres', requesterName: 'Secretaría', status: 'pending', createdAt: '2023-10-23T11:00:00Z', itemCount: 1 },
+    { 
+      id: 'req1', 
+      patientName: 'Juan Pérez', 
+      requesterName: 'Enf. Clara', 
+      status: 'pending', 
+      createdAt: '2023-10-23T10:30:00Z', 
+      items: [
+        { id: 'item1', name: 'Jeringas 5ml', quantity: 50 },
+        { id: 'item2', name: 'Gasas Estériles', quantity: 100 },
+      ]
+    },
+    { 
+      id: 'req2', 
+      patientName: 'María González', 
+      requesterName: 'Enf. Juan', 
+      status: 'ready', 
+      createdAt: '2023-10-22T14:00:00Z', 
+      items: [
+        { id: 'item3', name: 'Guantes de Nitrilo (M)', quantity: 20 },
+      ]
+    },
+    { 
+      id: 'req3', 
+      patientName: 'Carlos Sánchez', 
+      requesterName: 'Enf. Clara', 
+      status: 'rejected', 
+      createdAt: '2023-10-21T09:15:00Z', 
+      items: [
+        { id: 'item1', name: 'Jeringas 5ml', quantity: 10 },
+        { id: 'item4', name: 'Mascarillas KN95', quantity: 30 },
+      ]
+    },
   ];
 
-  // Re-definir statusConfig aquí o importarlo si se exporta desde RequestList
+  // Re-definir statusConfig aquí
   const statusConfigPage: Record<RequestStatus, { text: string }> = {
     'pending': { text: 'Pendiente' },
-    'approved': { text: 'Aprobado' },
+    'ready': { text: 'Listo' },
     'rejected': { text: 'Rechazado' },
   };
 
@@ -26,7 +53,6 @@
     const [isLoading, setIsLoading] = useState(false);
     const [requests, setRequests] = useState(mockRequestData);
     
-    // Estado para el modal de detalles
     const [isDetailsModalOpen, setDetailsModalOpen] = useState(false);
     const [selectedRequest, setSelectedRequest] = useState<RequestSummary | null>(null);
 
@@ -34,8 +60,22 @@
     const handleViewDetails = (request: RequestSummary) => {
       setSelectedRequest(request);
       setDetailsModalOpen(true);
-      // En una app real, aquí harías fetch de los detalles completos de la petición
-      // (la lista de insumos, cantidades, etc.)
+    };
+
+    const handleApprove = (request: RequestSummary) => {
+      // Lógica de API para aprobar
+      console.log("Aprobando:", request.id);
+      setRequests(prev => 
+        prev.map(r => r.id === request.id ? { ...r, status: 'ready' } : r)
+      );
+    };
+
+    const handleReject = (request: RequestSummary) => {
+      // Lógica de API para rechazar
+      console.log("Rechazando:", request.id);
+      setRequests(prev => 
+        prev.map(r => r.id === request.id ? { ...r, status: 'rejected' } : r)
+      );
     };
 
     const closeDetailsModal = () => {
@@ -54,17 +94,16 @@
           </Link>
         </div>
 
-        <Card>
-          <Card.Body>
-            <RequestList
-              requests={requests}
-              isLoading={isLoading}
-              onViewDetails={handleViewDetails}
-            />
-          </Card.Body>
-        </Card>
+        // La lista de cards se renderiza directamente aquí
+        <RequestList
+          requests={requests}
+          isLoading={isLoading}
+          onViewDetails={handleViewDetails}
+          onApprove={handleApprove}
+          onReject={handleReject}
+        />
 
-        {/* --- Modal de Detalles --- */}
+        // --- Modal de Detalles ---
         <Modal isOpen={isDetailsModalOpen} onClose={closeDetailsModal}>
           <Modal.Header onClose={closeDetailsModal}>
             Detalles de la Petición
@@ -72,37 +111,25 @@
           <Modal.Body>
             {selectedRequest ? (
               <div className="space-y-4">
-                <p><strong>ID Petición:</strong> {selectedRequest.id}</p>
                 <p><strong>Paciente:</strong> {selectedRequest.patientName}</p>
                 <p><strong>Solicitante:</strong> {selectedRequest.requesterName}</p>
                 <p><strong>Fecha:</strong> {new Date(selectedRequest.createdAt).toLocaleString('es-CL')}</p>
                 <p><strong>Estado:</strong> <span className="font-semibold">{statusConfigPage[selectedRequest.status].text}</span></p>
-                <p><strong>Ítems:</strong> {selectedRequest.itemCount}</p>
                 <hr className="my-4" />
                 <h4 className="font-semibold">Insumos Solicitados:</h4>
-                
-                {/* En una app real, aquí harías fetch de los items
-                  y los listarías. Por ahora, es un placeholder.
-                */}
-                
-                <p className="text-gray-600 text-sm">(Aquí iría la lista detallada de insumos...)</p>
+                <ul className="list-disc list-inside space-y-1 text-gray-700">
+                  {selectedRequest.items.map(item => (
+                    <li key={item.id}>
+                      <span className="font-medium">{item.quantity}x</span> {item.name}
+                    </li>
+                  ))}
+                </ul>
               </div>
             ) : (
               <Spinner label="Cargando detalles..." />
             )}
           </Modal.Body>
           <Modal.Footer>
-            
-            {/* Si el usuario es admin/secretaria, aquí irían los botones
-              de "Aprobar" y "Rechazar" si el estado es 'pending'.
-            */}
-            
-            {selectedRequest?.status === 'pending' && (
-              <>
-                <Button variant="danger" onClick={() => console.log('Rechazar')}>Rechazar</Button>
-                <Button variant="primary" onClick={() => console.log('Aprobar')}>Aprobar Petición</Button>
-              </>
-            )}
             <Button variant="secondary" onClick={closeDetailsModal}>
               Cerrar
             </Button>

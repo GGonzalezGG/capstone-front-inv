@@ -4,8 +4,8 @@ const Card = ({ children, className = '' }: { children?: React.ReactNode; classN
   return (
     <div
       className={`
-        bg-white rounded-lg shadow-md overflow-hidden 
-        border-t-4 border-lime-700 
+        bg-white rounded-xl shadow-md overflow-hidden
+        border border-gray-200
         transition-all duration-300 hover:shadow-xl
         ${className}
       `}
@@ -17,21 +17,19 @@ const Card = ({ children, className = '' }: { children?: React.ReactNode; classN
 
 const Header = ({ children, className = '' }: { children?: React.ReactNode; className?: string }) => {
   return (
-    <div className={`p-4 bg-blue-700 border-b border-gray-200 ${className}`}>
-      {/* The main title text uses the blue-700 color */}
-      <h3 className="text-lg font-semibold text-stone-100 tracking-wide">{children}</h3>
+    <div className={`px-5 py-4 bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 ${className}`}>
+      {children}
     </div>
   );
 };
 
-
 const Body = ({ children, className = '' }: { children?: React.ReactNode; className?: string }) => {
-  return <div className={`p-4 text-gray-700 ${className}`}>{children}</div>;
+  return <div className={`px-5 py-5 text-gray-700 ${className}`}>{children}</div>;
 };
 
 const Footer = ({ children, className = '' }: { children?: React.ReactNode; className?: string }) => {
   return (
-    <div className={`bg-gray-50 p-4 border-t border-gray-200 flex items-center ${className}`}>
+    <div className={`px-5 py-4 bg-gradient-to-r from-gray-50 to-blue-50/50 border-t border-gray-200 ${className}`}>
       {children}
     </div>
   );

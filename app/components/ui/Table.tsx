@@ -1,4 +1,5 @@
 import React from 'react';
+import { Database } from 'lucide-react';
 
 // Define the shape of a column.
 // We use a generic <T> to make this component work with any data type.
@@ -23,7 +24,7 @@ interface TableProps<T extends { id: string | number }> {
 }
 
 /**
- * A generic and reusable Table component.
+ * An enhanced, generic and reusable Table component with modern styling.
  * It's strongly typed and configurable via props.
  *
  * @param {TableProps<T>} props
@@ -34,30 +35,38 @@ const Table = <T extends { id: string | number }>({
   emptyStateMessage = "No hay datos para mostrar."
 }: TableProps<T>) => {
   return (
-    <div className="w-full overflow-hidden border border-gray-200 rounded-lg shadow-sm">
+    <div className="w-full overflow-hidden border border-gray-200 rounded-xl shadow-md">
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+          {/* Enhanced header with gradient background */}
+          <thead className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700">
             <tr>
               {columns.map((column) => (
                 <th
                   key={column.header}
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-bold text-blue-700 uppercase tracking-wider"
+                  className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider"
                 >
                   {column.header}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          
+          <tbody className="bg-white divide-y divide-gray-100">
             {data.length > 0 ? (
-              data.map((item) => (
-                <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+              data.map((item, index) => (
+                <tr 
+                  key={item.id} 
+                  className={`
+                    transition-all duration-200 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50
+                    ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}
+                  `}
+                >
                   {columns.map((column) => (
                     <td
                       key={`${item.id}-${String(column.accessor)}`}
-                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-700"
+                      className="px-6 py-4 text-sm text-gray-700 font-medium"
                     >
                       {/* If a custom render function is provided, use it. Otherwise, display the data directly. */}
                       {column.render
@@ -70,8 +79,20 @@ const Table = <T extends { id: string | number }>({
               ))
             ) : (
               <tr>
-                <td colSpan={columns.length} className="px-6 py-12 text-center text-gray-500">
-                  {emptyStateMessage}
+                <td colSpan={columns.length} className="px-6 py-16">
+                  <div className="flex flex-col items-center justify-center text-center space-y-4">
+                    <div className="bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full p-6">
+                      <Database className="w-12 h-12 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                        No hay datos disponibles
+                      </h3>
+                      <p className="text-gray-500 text-sm">
+                        {emptyStateMessage}
+                      </p>
+                    </div>
+                  </div>
                 </td>
               </tr>
             )}
@@ -83,80 +104,3 @@ const Table = <T extends { id: string | number }>({
 };
 
 export default Table;
-
-/*
-  -----------------------------
-  --- EJEMPLO DE USO ---
-  -----------------------------
-  
-  import React from 'react';
-  import Table, { ColumnDef } from './components/ui/Table';
-  import Button from './components/ui/Button'; // Asumiendo que tienes un componente Button
-
-  // 1. Define the type for your data
-  interface Insumo {
-    id: number;
-    nombre: string;
-    cantidad: number;
-    stockMinimo: number;
-    fechaVencimiento: string;
-  }
-
-  // 2. Create some sample data
-  const sampleData: Insumo[] = [
-    { id: 1, nombre: 'Jeringas Desechables 5ml', cantidad: 150, stockMinimo: 50, fechaVencimiento: '2026-10-15' },
-    { id: 2, nombre: 'Gasas Estériles', cantidad: 45, stockMinimo: 100, fechaVencimiento: '2025-08-20' },
-    { id: 3, nombre: 'Alcohol Desinfectante 1L', cantidad: 80, stockMinimo: 30, fechaVencimiento: '2027-01-30' },
-    { id: 4, nombre: 'Guantes de Nitrilo (Caja)', cantidad: 25, stockMinimo: 20, fechaVencimiento: '2025-12-01' },
-  ];
-
-  const InventoryPage = () => {
-    // 3. Define the columns for the table
-    const columns: ColumnDef<Insumo>[] = [
-      {
-        header: 'Nombre del Insumo',
-        accessor: 'nombre',
-      },
-      {
-        header: 'Cantidad Disponible',
-        accessor: 'cantidad',
-        // Custom render to show a warning badge if stock is low
-        render: (item) => (
-          <div className="flex items-center space-x-2">
-            <span>{item.cantidad}</span>
-            {item.cantidad < item.stockMinimo && (
-              <span className="px-2 py-0.5 text-xs font-semibold text-red-800 bg-red-100 rounded-full">
-                Stock Bajo
-              </span>
-            )}
-          </div>
-        )
-      },
-      {
-        header: 'Fecha de Vencimiento',
-        accessor: 'fechaVencimiento',
-      },
-      {
-        header: 'Acciones',
-        accessor: 'actions', // A special accessor for non-data columns
-        render: (item) => (
-          <div className="flex space-x-2">
-            <Button variant="secondary" onClick={() => alert(`Editando ${item.nombre}`)}>
-              Editar
-            </Button>
-            <Button variant="danger" onClick={() => alert(`Eliminando ${item.nombre}`)}>
-              Eliminar
-            </Button>
-          </div>
-        ),
-      },
-    ];
-
-    return (
-      <div className="p-10 bg-gray-100">
-        <h1 className="text-2xl font-bold text-blue-700 mb-6">Gestión de Inventario</h1>
-        <Table data={sampleData} columns={columns} />
-      </div>
-    );
-  }
-*/

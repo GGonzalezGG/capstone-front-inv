@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
+import { X } from 'lucide-react';
 
 interface ModalProps {
   isOpen: boolean;
@@ -14,21 +15,19 @@ interface ModalSubComponentProps {
 }
 
 /**
- * Header sub-component
+ * Header sub-component with gradient background
  */
 const Header: React.FC<ModalSubComponentProps & { onClose?: () => void }> = ({ children, className = '', onClose }) => {
   return (
-    <div className={`flex items-center justify-between p-4 border-b border-gray-200 ${className}`}>
-      <h3 className="text-lg font-semibold text-blue-700">{children}</h3>
+    <div className={`flex items-center justify-between px-6 py-4 bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 ${className}`}>
+      <h3 className="text-xl font-bold text-white">{children}</h3>
       {onClose && (
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 transition-colors"
+          className="text-white/80 hover:text-white hover:bg-white/20 transition-all duration-200 rounded-lg p-1.5 active:scale-95"
           aria-label="Cerrar modal"
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <X className="w-5 h-5" />
         </button>
       )}
     </div>
@@ -36,18 +35,18 @@ const Header: React.FC<ModalSubComponentProps & { onClose?: () => void }> = ({ c
 };
 
 /**
- * Body sub-component
+ * Body sub-component with enhanced styling
  */
 const Body: React.FC<ModalSubComponentProps> = ({ children, className = '' }) => {
-  return <div className={`p-6 text-gray-700 ${className}`}>{children}</div>;
+  return <div className={`p-6 text-gray-700 max-h-[60vh] overflow-y-auto ${className}`}>{children}</div>;
 };
 
 /**
- * Footer sub-component
+ * Footer sub-component with gradient background
  */
 const Footer: React.FC<ModalSubComponentProps> = ({ children, className = '' }) => {
   return (
-    <div className={`bg-gray-50 p-4 border-t border-gray-200 flex justify-end space-x-3 ${className}`}>
+    <div className={`bg-gradient-to-r from-gray-50 to-blue-50/50 px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 ${className}`}>
       {children}
     </div>
   );
@@ -60,20 +59,26 @@ type ModalType = React.FC<ModalProps> & {
 };
 
 /**
- * The main Modal component.
- * Uses a React Portal and Tailwind's transition classes for a smooth entrance animation.
+ * Enhanced Modal component with smooth animations and blur backdrop.
+ * Uses a React Portal and Tailwind's transition classes for smooth entrance animation.
  */
 const Modal = (({ isOpen, onClose, children, className = '' }: ModalProps) => {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      // When the modal is told to open, we trigger the animation after a tiny delay
+      // Prevent body scroll when modal is open
+      document.body.style.overflow = 'hidden';
+      // Trigger animation after a tiny delay
       const timer = setTimeout(() => setShow(true), 10);
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer);
+        document.body.style.overflow = 'unset';
+      };
     } else {
       // When closing, immediately hide for the next open
       setShow(false);
+      document.body.style.overflow = 'unset';
     }
   }, [isOpen]);
 
@@ -91,16 +96,22 @@ const Modal = (({ isOpen, onClose, children, className = '' }: ModalProps) => {
 
   return ReactDOM.createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm"
+      className={`
+        fixed inset-0 z-50 flex items-center justify-center
+        bg-black/40 backdrop-blur-md
+        transition-all duration-300 ease-out
+        ${show ? 'opacity-100' : 'opacity-0'}
+      `}
       onClick={onClose}
       role="dialog"
       aria-modal="true"
     >
       <div
         className={`
-          bg-white rounded-lg shadow-2xl w-full max-w-lg mx-4 overflow-hidden
-          transform transition-all duration-200 ease-out
-          ${show ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}
+          bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden
+          border border-gray-200
+          transform transition-all duration-300 ease-out
+          ${show ? 'scale-100 opacity-100 translate-y-0' : 'scale-95 opacity-0 translate-y-4'}
           ${className}
         `}
         onClick={(e) => e.stopPropagation()}
@@ -117,4 +128,3 @@ Modal.Body = Body;
 Modal.Footer = Footer;
 
 export default Modal;
-

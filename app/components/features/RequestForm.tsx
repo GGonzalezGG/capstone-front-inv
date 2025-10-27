@@ -135,7 +135,7 @@ const RequestForm: React.FC<RequestFormProps> = ({
     <Card>
       <form onSubmit={handleSubmit}>
         <Card.Header>
-          <p className="text-xl font-semibold text-blue-700">Crear Petición de Insumos</p>
+          <p className="text-3xl text-bold">Crear Petición de Insumos</p>
         </Card.Header>
         
         <Card.Body>

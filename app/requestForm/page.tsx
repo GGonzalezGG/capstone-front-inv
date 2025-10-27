@@ -1,6 +1,7 @@
 "use client";
   import React, { useState } from 'react';
   import RequestForm, { AvailableStockItem, Patient, RequestFormData } from '../components/features/RequestForm';
+  import Header from '../components/ui/Header';
   
   // Datos simulados del inventario disponible
   const mockAvailableItems: AvailableStockItem[] = [
@@ -41,7 +42,8 @@
 
     return (
       <div className="p-8 bg-gray-100 min-h-screen">
-        <div className="max-w-3xl mx-auto">
+        <Header></Header>
+        <div className="max-w-3xl mx-auto py-15">
           <RequestForm
             availableItems={mockAvailableItems}
             patients={mockPatients} // Pasar la lista de pacientes

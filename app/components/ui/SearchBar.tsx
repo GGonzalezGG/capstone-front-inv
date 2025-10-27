@@ -26,7 +26,8 @@ const SearchIcon = ({ className = 'w-5 h-5' }: { className?: string }) => (
 // Extiende las props de un input nativo para que acepte 'onChange', 'value', 'placeholder', etc.
 interface SearchBarProps extends InputHTMLAttributes<HTMLInputElement> {
   // value y onChange vendrán de InputHTMLAttributes
-  // No necesitamos re-definirlos si extendemos.
+  // Permitir clases adicionales que se aplicarán directamente al <input>
+  inputClassName?: string;
 }
 
 /**
@@ -36,6 +37,7 @@ interface SearchBarProps extends InputHTMLAttributes<HTMLInputElement> {
 // Corregido: Se elimina React.FC para evitar que 'children' se cuele en '...props'
 const SearchBar = ({
   className = '',
+  inputClassName,
   ...props // 'props' ahora es puramente InputHTMLAttributes
 }: SearchBarProps) => {
   // Extrae id y placeholder para asegurar que no queden como possibly-undefined
@@ -48,7 +50,9 @@ const SearchBar = ({
       <Input
         id={id}
         type="search" // Usar type="search" es semánticamente correcto
-        className="w-full bg-zinc-50 text-blue-700" // Asegura que el input ocupe todo el wrapper
+        // Asegura que el input ocupe todo el wrapper. Se concatena cualquier clase
+        // pasada mediante `inputClassName` para permitir personalizar el placeholder
+        className={`w-full bg-zinc-50 text-blue-700 ${inputClassName ?? ''}`}
         // Corregido: Se añade el label requerido por Input, usando el placeholder
         // Asumimos que el componente Input ocultará visualmente este label
         // o lo mostrará. En cualquier caso, es requerido para accesibilidad.

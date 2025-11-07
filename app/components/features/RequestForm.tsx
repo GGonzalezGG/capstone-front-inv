@@ -59,18 +59,21 @@ const RequestForm: React.FC<RequestFormProps> = ({
   // Nuevos estados para el paciente y el formulario de item
   const [selectedPatientId, setSelectedPatientId] = useState<string>('');
   const [selectedItemId, setSelectedItemId] = useState<string>('');
-  const [currentQuantity, setCurrentQuantity] = useState<number>(1);
+  const [currentQuantity, setCurrentQuantity] = useState<string>("1");
   const [error, setError] = useState<string | null>(null);
 
   // 3. Handlers para el formulario
   
   const handleAddItem = () => {
     setError(null);
+
+    const quantityNumber = parseInt(currentQuantity) || 0;
+
     if (!selectedItemId) {
       setError('Por favor, selecciona un insumo.');
       return;
     }
-    if (currentQuantity <= 0) {
+    if (quantityNumber <= 0) {
       setError('La cantidad debe ser mayor a 0.');
       return;
     }
@@ -82,7 +85,7 @@ const RequestForm: React.FC<RequestFormProps> = ({
     const itemDetails = availableItems.find(i => i.id === selectedItemId);
     if (!itemDetails) return;
 
-    if (currentQuantity > itemDetails.stock) {
+    if (quantityNumber > itemDetails.stock) {
       setError(`Stock insuficiente. Solo quedan ${itemDetails.stock} unidades de "${itemDetails.name}".`);
       return;
     }
@@ -91,13 +94,13 @@ const RequestForm: React.FC<RequestFormProps> = ({
       id: crypto.randomUUID(),
       itemId: itemDetails.id,
       name: itemDetails.name,
-      quantity: currentQuantity,
+      quantity: quantityNumber,
       stock: itemDetails.stock,
     };
     setRequestLines(prevLines => [...prevLines, newRequestLine]);
 
     setSelectedItemId('');
-    setCurrentQuantity(1);
+    setCurrentQuantity("1");
   };
 
   const handleRemoveItem = (lineId: string) => {
@@ -192,9 +195,12 @@ const RequestForm: React.FC<RequestFormProps> = ({
                   id="quantity"
                   name="quantity"
                   type="number"
-                  min={1}
                   value={currentQuantity}
-                  onChange={(e) => setCurrentQuantity(parseInt(e.target.value) || 1)}
+                  onChange={(e) => {
+                    // Solo permite números (o un string vacío)
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    setCurrentQuantity(val);
+                  }}
                 />
               </div>
             </div>

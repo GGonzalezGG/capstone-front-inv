@@ -40,7 +40,8 @@ const InventoryForm: React.FC<InventoryFormProps> = ({
   isSubmitting,
 }) => {
   const [formData, setFormData] = useState<InventoryFormData>(initialState);
-  const [errors, setErrors] = useState<Partial<Record<keyof InventoryFormData, string>>>({});
+  const [quantityInput, setQuantityInput] = useState<string>(initialState.quantity.toString());
+  const [errors, setErrors] = useState<Partial<Record<keyof InventoryFormData, string>>>({}); 
 
   // Efecto para llenar el formulario cuando 'itemToEdit' cambia
   useEffect(() => {
@@ -57,9 +58,11 @@ const InventoryForm: React.FC<InventoryFormProps> = ({
         status: itemToEdit.status,
         expiryDate: formattedDate,
       });
+      setQuantityInput(itemToEdit.quantity.toString());
       setErrors({}); // Limpia errores al cargar un nuevo ítem
     } else {
       setFormData(initialState); // Resetea si no hay ítem (modo "Crear")
+      setQuantityInput(initialState.quantity.toString()); // Reseteamos el estado del string del input.
       setErrors({});
     }
   }, [itemToEdit]);
@@ -68,10 +71,26 @@ const InventoryForm: React.FC<InventoryFormProps> = ({
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'number' ? parseInt(value) || 0 : value,
-    }));
+    if (name === 'quantity') {
+      // Filtra cualquier cosa que no sea un número
+      const stringValue = value.replace(/[^0-9]/g, '');
+      // Actualiza el estado del string (lo que ve el usuario)
+      setQuantityInput(stringValue);
+      
+      // Actualiza el estado del formulario (el número real),
+      // tratando un string vacío como 0.
+      setFormData(prev => ({
+        ...prev,
+        quantity: parseInt(stringValue) || 0,
+      }));
+
+    } else {
+      // Manejo normal para los otros inputs
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
 
     // Limpia el error del campo al empezar a escribir
     if (errors[name as keyof InventoryFormData]) {
@@ -132,11 +151,10 @@ const InventoryForm: React.FC<InventoryFormProps> = ({
           label="Cantidad"
           name="quantity"
           type="number"
-          value={formData.quantity}
+          value={quantityInput} //El valor se bindea al estado 'string'
           onChange={handleChange}
           error={errors.quantity}
           disabled={isSubmitting}
-          min={0}
         />
         
         {/* Usamos un <select> nativo estilizado para el estado */}

@@ -1,38 +1,32 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
+import { useRouter } from 'next/navigation'; // 1. Importar useRouter para redirigir
 import LoginForm from '../components/features/LoginForm';
+import { useAuth } from '../contexts/AuthContext';
 
 // import Image from 'next/image';
 
 const LoginPage = () => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // 3. Usar el estado y las funciones del Context
+  const { login, isLoading, error, token } = useAuth();
+  const router = useRouter();
 
   /**
-   * Simulación de la lógica de login.
-   * Reemplaza esto con tu llamada real a la API.
+   * Manejador de login que ahora usa el contexto.
    */
   const handleLogin = async (email: string, pass: string) => {
-    setIsLoading(true);
-    setError(null);
-    
-    // Simular una llamada a la API
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    // Lógica de validación de ejemplo
-    if (email === "admin@duomo.cl" && pass === "1234") {
-      console.log("Login exitoso!");
-      // Aquí redirigirías al dashboard:
-      // router.push('/dashboard');
-      alert('¡Login Exitoso! Redirigiendo...');
-    } else {
-      console.log("Credenciales incorrectas");
-      setError("Email o contraseña incorrectos. Inténtalo de nuevo.");
-    }
-
-    setIsLoading(false);
+    // 4. Llamar a la función de login del contexto
+    await login(email, pass);
   };
+
+  // 5. Efecto para redirigir si el login es exitoso
+  useEffect(() => {
+    if (token) {
+      // Si el token existe (login exitoso), redirigir al dashboard
+      router.push('/dashboard');
+    }
+  }, [token, router]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-blue-100 p-4">
@@ -46,8 +40,8 @@ const LoginPage = () => {
 
       <LoginForm 
         onLogin={handleLogin}
-        isLoading={isLoading}
-        error={error}
+        isLoading={isLoading} // 6. Pasar el estado del contexto
+        error={error}       // 6. Pasar el estado del contexto
       />
     </div>
   );

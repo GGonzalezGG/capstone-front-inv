@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Menu, X, User, Package, LayoutDashboard, Plus, LogOut , ScrollText } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 
 // Links de navegación con iconos
 const navigationLinks = [
@@ -48,6 +49,11 @@ export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [pathname, setPathname] = useState('');
+  const { logout } = useAuth();
+
+  const handleLogOut = () => {
+    logout();
+  };
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -135,13 +141,14 @@ export default function Header() {
                     <span>Ver Perfil</span>
                   </a>
                   <hr className="my-1 border-gray-200" />
-                  <a
-                    href="/logout"
-                    className="flex items-center space-x-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                  <button
+                    type="button"
+                    onClick={handleLogOut}
+                    className="flex items-center space-x-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors w-full text-left"
                   >
                     <LogOut className="w-4 h-4" />
                     <span>Cerrar Sesión</span>
-                  </a>
+                  </button>
                 </div>
               )}
             </div>

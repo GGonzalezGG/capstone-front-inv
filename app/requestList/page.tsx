@@ -12,35 +12,68 @@ import Card from "../components/ui/Card";
 import { useAuth } from "../contexts/AuthContext";
 import { useRouter } from "next/navigation";
 
-// (Tipos de Backend y Mapeo - sin cambios, la corrección anterior se mantiene)
+// --- 1. DEFINICIONES DE TIPOS (MOVIDAS AL INICIO) ---
+
+// Tipos de Backend (Datos que llegan de la API)
 type BackendRequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "COMPLETED";
-type MappedFrontendStatus = "pending" | "ready" | "rejected" | "completed";
 interface BackendItemLine {
-  /* ... */
+  id: string;
+  quantity: number;
+  item: { id: string; name: string };
 }
 interface BackendRequest {
-  /* ... */
+  id: string;
+  patient: { name: string };
+  requester: { name: string };
+  status: BackendRequestStatus;
+  createdAt: string;
+  completedAt?: string;
+  requestLines: BackendItemLine[];
 }
-const mapBackendRequest = (req: Partial<BackendRequest>): MappedRequest => {
+
+// Tipos de Frontend (Datos que usa el componente)
+type MappedFrontendStatus = "pending" | "ready" | "rejected" | "completed";
+interface MappedRequest {
+  id: string;
+  patientName: string;
+  requesterName: string;
+  status: MappedFrontendStatus;
+  createdAt: string;
+  items: { id: string; name: string; quantity: number }[];
+}
+
+// --- 2. mapBackendRequest (CORREGIDO) ---
+// La entrada 'req' ya no es 'Partial'. Es un 'BackendRequest' completo.
+// Esto elimina todos los errores de "Property does not exist".
+const mapBackendRequest = (req: BackendRequest): MappedRequest => {
   let mappedStatus: MappedFrontendStatus = "pending";
-  if (req.status === "APPROVED") mappedStatus = "ready";
-  else if (req.status === "COMPLETED") mappedStatus = "completed";
-  else if (req.status === "REJECTED") mappedStatus = "rejected";
-  else mappedStatus = "pending";
+
+  if (req.status === "APPROVED") {
+    mappedStatus = "ready";
+  } else if (req.status === "COMPLETED") {
+    mappedStatus = "completed";
+  } else if (req.status === "REJECTED") {
+    mappedStatus = "rejected";
+  } else {
+    mappedStatus = "pending";
+  }
 
   return {
-    id: req.id || "id-desconocido",
-    patientName: req.patient?.name || "Paciente Desconocido",
-    requesterName: req.requester?.name || "Solicitante Desconocido",
+    id: req.id,
+    patientName: req.patient.name, // Corregido: Ya no es opcional
+    requesterName: req.requester.name, // Corregido: Ya no es opcional
     status: mappedStatus,
-    createdAt: req.createdAt || new Date().toISOString(),
-    items: (req.requestLines || []).map((line) => ({
-      id: line.item?.id || "item-id-desconocido",
-      name: line.item?.name || "Insumo Desconocido",
+    createdAt: req.createdAt, // Corregido: Ya no es opcional
+    items: req.requestLines.map((line) => ({
+      // Corregido: Ya no es opcional
+      id: line.item.id,
+      name: line.item.name,
       quantity: line.quantity,
     })),
   };
 };
+
+// (El resto de las funciones helper no cambian)
 const mapBackendStatusToFrontend = (
   status: BackendRequestStatus
 ): MappedFrontendStatus => {
@@ -56,6 +89,7 @@ const mapBackendStatusToFrontend = (
       return "pending";
   }
 };
+
 const statusConfigPage: Record<
   RequestStatus,
   { text: string; backendStatus: BackendRequestStatus }
@@ -64,12 +98,13 @@ const statusConfigPage: Record<
   ready: { text: "Listo", backendStatus: "APPROVED" },
   rejected: { text: "Rechazado", backendStatus: "REJECTED" },
 };
+
+// (Componente PendingItemsSummary - sin cambios)
 interface SummaryItem {
   name: string;
   quantity: number;
 }
 const PendingItemsSummary = ({ items }: { items: SummaryItem[] }) => {
-  // ... (Componente de Resumen - sin cambios)
   if (items.length === 0) {
     return (
       <Card>
@@ -113,15 +148,13 @@ const RequestsPage = () => {
   const { token } = useAuth();
   const router = useRouter();
 
-  // --- 1. AÑADIR NUEVO ESTADO PARA EL MODAL DE RECHAZO ---
   const [isDetailsModalOpen, setDetailsModalOpen] = useState(false);
-  const [isRejectModalOpen, setRejectModalOpen] = useState(false); // <-- NUEVO
+  const [isRejectModalOpen, setRejectModalOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<RequestSummary | null>(
     null
   );
 
-  // --- 2. fetchRequests ACTUALIZADO ---
-  // Ahora filtra 'REJECTED' en la carga inicial
+  // (fetchRequests - sin cambios)
   const fetchRequests = async () => {
     if (!token) return;
     setIsLoading(true);
@@ -138,8 +171,6 @@ const RequestsPage = () => {
 
       const mappedRequests = allRequests.map(mapBackendRequest);
 
-      // FILTRO ACTUALIZADO:
-      // Ya no se muestran ni 'completed' ni 'rejected'
       const activeRequests = mappedRequests.filter(
         (req) => req.status !== "completed" && req.status !== "rejected"
       );
@@ -158,7 +189,6 @@ const RequestsPage = () => {
 
   // (activeItemsSummary - sin cambios)
   const activeItemsSummary = useMemo(() => {
-    // ...
     const summary = new Map<string, number>();
     requests
       .filter((req) => req.status === "pending" || req.status === "ready")
@@ -173,20 +203,16 @@ const RequestsPage = () => {
       .sort((a, b) => b.quantity - a.quantity);
   }, [requests]);
 
-  // --- 3. handleUpdateRequestStatus ACTUALIZADO ---
-  // Ahora filtra 'REJECTED' del estado local
+  // (handleUpdateRequestStatus - sin cambios)
   const handleUpdateRequestStatus = async (
     requestId: string,
     newBackendStatus: BackendRequestStatus
   ) => {
     const originalRequests = requests;
 
-    // --- LÓGICA DE FILTRADO OPTIMISTA ACTUALIZADA ---
     if (newBackendStatus === "COMPLETED" || newBackendStatus === "REJECTED") {
-      // Si se completa O RECHAZA, se elimina de esta lista
       setRequests((prev) => prev.filter((r) => r.id !== requestId));
     } else {
-      // Si se aprueba o reabre
       const newFrontendStatus = mapBackendStatusToFrontend(newBackendStatus);
       setRequests((prev) =>
         prev.map((r) =>
@@ -211,55 +237,42 @@ const RequestsPage = () => {
       );
 
       if (!res.ok) {
-        setRequests(originalRequests); // Revertir si falla
+        setRequests(originalRequests);
         const err = await res.json();
         throw new Error(err.message || "Error al actualizar la petición");
       }
-      // Éxito: (El estado ya se actualizó)
-      // Aquí mostrar toast de éxito
     } catch (error: any) {
       console.error(error);
-      setRequests(originalRequests); // Revertir si hay error
-      // Aquí mostrar toast de error
+      setRequests(originalRequests);
     }
   };
 
-  // (Modal Handlers - sin cambios)
+  // (Todos los Handlers y el JSX - sin cambios)
   const handleViewDetails = (request: RequestSummary) => {
     setSelectedRequest(request);
     setDetailsModalOpen(true);
   };
   const closeDetailsModal = () => {
     setDetailsModalOpen(false);
-    setSelectedRequest(null); // Limpiar al cerrar
+    setSelectedRequest(null);
   };
-
-  // --- 4. Handlers de acciones ACTUALIZADOS ---
   const handleApprove = (request: RequestSummary) => {
     handleUpdateRequestStatus(request.id, "APPROVED");
   };
-
   const handleReject = (request: RequestSummary) => {
-    // Ya no llama a la API, solo abre el modal
     setSelectedRequest(request);
     setRejectModalOpen(true);
   };
-
   const handleComplete = (request: RequestSummary) => {
     handleUpdateRequestStatus(request.id, "COMPLETED");
   };
-
   const handleReopen = (request: RequestSummary) => {
-    // Esta función ahora solo es llamada desde el estado 'ready'
     handleUpdateRequestStatus(request.id, "PENDING");
   };
-
-  // --- 5. NUEVOS Handlers para el modal de rechazo ---
   const closeRejectModal = () => {
     setRejectModalOpen(false);
-    setSelectedRequest(null); // Limpiar al cerrar
+    setSelectedRequest(null);
   };
-
   const confirmReject = () => {
     if (selectedRequest) {
       handleUpdateRequestStatus(selectedRequest.id, "REJECTED");
@@ -273,7 +286,6 @@ const RequestsPage = () => {
 
       <main className="pt-16">
         <div className="p-4 md:p-8 max-w-7xl mx-auto">
-          {/* (Título y Botón "Crear" - sin cambios) */}
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-bold text-gray-900">
               Peticiones de Insumos
@@ -285,7 +297,6 @@ const RequestsPage = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-              {/* (RequestList pasa los handlers - sin cambios) */}
               <RequestList
                 requests={requests}
                 isLoading={isLoading}
@@ -302,9 +313,8 @@ const RequestsPage = () => {
             </div>
           </div>
 
-          {/* Modal de Detalles (sin cambios) */}
+          {/* Modal de Detalles */}
           <Modal isOpen={isDetailsModalOpen} onClose={closeDetailsModal}>
-            {/* ... (código del modal de detalles) ... */}
             <Modal.Header onClose={closeDetailsModal}>
               Detalles de la Petición
             </Modal.Header>
@@ -324,7 +334,6 @@ const RequestsPage = () => {
                       "es-CL"
                     )}
                   </p>
-                  {/* Este estado 'rejected' ya no debería aparecer aquí, pero si lo hace, funcionará */}
                   <p>
                     <strong>Estado:</strong>{" "}
                     <span className="font-semibold">
@@ -354,7 +363,7 @@ const RequestsPage = () => {
             </Modal.Footer>
           </Modal>
 
-          {/* --- 6. AÑADIR NUEVO MODAL DE RECHAZO --- */}
+          {/* Modal de Rechazo */}
           <Modal isOpen={isRejectModalOpen} onClose={closeRejectModal}>
             <Modal.Header onClose={closeRejectModal}>
               Confirmar Rechazo

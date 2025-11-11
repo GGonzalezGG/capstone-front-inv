@@ -14,55 +14,57 @@ import Card from "../components/ui/Card";
 import InventoryForm from "../components/features/InventoryForm";
 import SearchBar from "../components/ui/SearchBar";
 import Header from "../components/ui/Header";
+import { useAuth } from "../contexts/AuthContext";
+import Spinner from "../components/ui/Spinner";
 
-// --- (Nuevas importaciones) ---
-import { useAuth } from "../contexts/AuthContext"; // 1. Hook de autenticación
-import Spinner from "../components/ui/Spinner"; // 2. Spinner para la carga
+// --- NUEVO: Definición del tipo de item como llega del Backend ---
+// Basado en el schema.prisma
+interface BackendInventoryItem {
+  id: string;
+  name: string;
+  category: string;
+  quantityInStock: number;
+  lowStockThreshold: number;
+  expiryDate: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  description: string | null;
+}
 
-// --- (Datos simulados para PESTAÑA INVENTARIO - Aún se usan) ---
-// NOTA: Dejé estos mocks porque la pestaña "Gestión de Inventario"
-// usa una lógica separada. Nos enfocaremos en la pestaña "Dashboard".
-const mockInventoryData: InventoryItem[] = [
-  {
-    id: "1",
-    name: "Jeringas 5ml",
-    category: "Insumos Médicos",
-    quantity: 150,
-    status: "available",
-    expiryDate: "2025-12-31",
-  },
-  {
-    id: "2",
-    name: "Guantes de Nitrilo (M)",
-    category: "Protección",
-    quantity: 45,
-    status: "low_stock",
-    expiryDate: "2024-11-30",
-  },
-  {
-    id: "3",
-    name: "Gasas Estériles",
-    category: "Curación",
-    quantity: 300,
-    status: "available",
-  },
-  {
-    id: "4",
-    name: "Alcohol Pad",
-    category: "Desinfección",
-    quantity: 0,
-    status: "expired",
-    expiryDate: "2023-01-01",
-  },
-  {
-    id: "5",
-    name: "Mascarillas KN95",
-    category: "Protección",
-    quantity: 200,
-    status: "available",
-    expiryDate: "2026-05-20",
-  },
-];
+// --- NUEVO: Función para mapear datos del Backend al Frontend ---
+/**
+ * Transforma un item del backend al formato que espera InventoryTable.
+ * Deriva el 'status' basado en la lógica de negocio.
+ */
+const mapBackendItemToFrontend = (
+  item: BackendInventoryItem
+): InventoryItem => {
+  let status: InventoryItem["status"] = "available";
+  const now = new Date();
+  const expiry = item.expiryDate ? new Date(item.expiryDate) : null;
+
+  if (expiry && expiry < now) {
+    status = "expired";
+  } else if (item.quantityInStock <= 0) {
+    status = "expired";
+  } else if (item.quantityInStock < item.lowStockThreshold) {
+    status = "low_stock";
+  }
+
+  return {
+    id: item.id,
+    name: item.name,
+    category: item.category,
+    quantity: item.quantityInStock,
+    status: status,
+    expiryDate: item.expiryDate || undefined,
+
+    // --- CAMPOS AÑADIDOS ---
+    description: item.description, //
+    lowStockThreshold: item.lowStockThreshold, //
+  };
+};
 
 // --- (Iconos - Sin cambios) ---
 const BoxIcon = () => (
@@ -117,7 +119,7 @@ const CheckIcon = () => (
   </svg>
 );
 
-// --- (Nuevos tipos para los datos del Dashboard) ---
+// --- (Tipos del Dashboard - Sin cambios) ---
 interface DashboardStats {
   lowStock: number;
   totalItems: number;
@@ -129,18 +131,20 @@ interface ChartDataItem {
 }
 
 const DashboardInventoryPage = () => {
-  // --- (Estados para la pestaña "Inventario" - Sin cambios) ---
   const [activeTab, setActiveTab] = useState<"dashboard" | "inventory">(
     "dashboard"
   );
-  const [items, setItems] = useState(mockInventoryData);
+
+  // --- Estados de la pestaña "Inventario" ---
+  const [isLoadingInventory, setIsLoadingInventory] = useState(true); // --- NUEVO ---
+  const [items, setItems] = useState<InventoryItem[]>([]); // --- NUEVO: Inicia vacío ---
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
   const [isEditModalOpen, setEditModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // --- (Nuevos estados para la pestaña "Dashboard") ---
+  // --- Estados de la pestaña "Dashboard" (de la etapa anterior) ---
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
   const [stats, setStats] = useState<DashboardStats>({
     lowStock: 0,
@@ -149,9 +153,34 @@ const DashboardInventoryPage = () => {
   });
   const [chartData, setChartData] = useState<ChartDataItem[]>([]);
   const [activityData, setActivityData] = useState<ActivityItem[]>([]);
+
   const { token } = useAuth(); // Obtiene el token del contexto
 
-  // --- (Efecto para cargar datos del Dashboard) ---
+  // --- NUEVO: Función para LEER (GET) el inventario ---
+  const fetchInventory = async () => {
+    if (!token) return; // No hacer nada si no hay token
+
+    setIsLoadingInventory(true);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/inventory`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Error al cargar el inventario");
+
+      const result = await res.json();
+      const backendItems: BackendInventoryItem[] = result.data;
+
+      // Mapear los datos del backend al formato del frontend
+      setItems(backendItems.map(mapBackendItemToFrontend));
+    } catch (error) {
+      console.error(error);
+      // Aquí mostrar un toast de error
+    } finally {
+      setIsLoadingInventory(false);
+    }
+  };
+
+  // --- Efecto para cargar datos del Dashboard (de la etapa anterior) ---
   useEffect(() => {
     if (token && activeTab === "dashboard") {
       const fetchDashboardData = async () => {
@@ -160,35 +189,33 @@ const DashboardInventoryPage = () => {
           const res = await fetch(
             `${process.env.NEXT_PUBLIC_API_URL}/dashboard`,
             {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
+              headers: { Authorization: `Bearer ${token}` },
             }
           );
-
-          if (!res.ok) {
+          if (!res.ok)
             throw new Error("Error al cargar los datos del dashboard");
-          }
-
           const data = await res.json();
-
-          // El backend envuelve la respuesta en 'data'
           setStats(data.data.stats);
           setChartData(data.data.chartData);
           setActivityData(data.data.recentActivities);
         } catch (error) {
           console.error(error);
-          // Aquí podrías mostrar un toast de error
         } finally {
           setIsLoadingDashboard(false);
         }
       };
-
       fetchDashboardData();
     }
-  }, [token, activeTab]); // Se recarga si el token cambia o si el usuario vuelve a la pestaña
+  }, [token, activeTab]);
 
-  // --- (Lógica de la pestaña "Inventario" - Sin cambios) ---
+  // --- NUEVO: Efecto para cargar datos de Inventario ---
+  useEffect(() => {
+    if (token && activeTab === "inventory") {
+      fetchInventory();
+    }
+  }, [token, activeTab]); // Se recarga si el token cambia o si el usuario cambia a esta pestaña
+
+  // --- (Lógica de filtrado - Sin cambios) ---
   const filteredItems = useMemo(() => {
     if (!searchTerm) return items;
     return items.filter(
@@ -198,6 +225,7 @@ const DashboardInventoryPage = () => {
     );
   }, [items, searchTerm]);
 
+  // --- (Handlers de Modales - Sin cambios) ---
   const handleEdit = (item: InventoryItem) => {
     setSelectedItem(item);
     setEditModalOpen(true);
@@ -214,31 +242,96 @@ const DashboardInventoryPage = () => {
     setSelectedItem(null);
     setDeleteModalOpen(false);
   };
-  const confirmDelete = () => {
-    if (selectedItem) {
-      setItems((prev) => prev.filter((i) => i.id !== selectedItem.id));
-      closeDeleteModal();
-    }
-  };
   const closeEditModal = () => {
     setSelectedItem(null);
     setEditModalOpen(false);
   };
-  const handleSubmitForm = (data: Omit<InventoryItem, "id">) => {
+
+  // --- NUEVO: Handler para CREAR (POST) y ACTUALIZAR (PUT) ---
+  const handleSubmitForm = async (
+    data: Omit<InventoryItem, "id" | "status">
+  ) => {
     setIsSubmitting(true);
-    setTimeout(() => {
-      if (selectedItem) {
-        const updatedItem = { ...selectedItem, ...data };
-        setItems((prev) =>
-          prev.map((i) => (i.id === selectedItem.id ? updatedItem : i))
+
+    // 1. Transformar datos del formulario al formato del Backend DTO
+    const payload = {
+      name: data.name,
+      category: data.category,
+      quantityInStock: Number(data.quantity),
+      expiryDate: data.expiryDate
+        ? new Date(data.expiryDate).toISOString()
+        : null,
+      description: data.description || null, // Enviar null si está vacío
+      lowStockThreshold: Number(data.lowStockThreshold),
+    };
+
+    const isEditing = !!selectedItem;
+    const url = isEditing
+      ? `${process.env.NEXT_PUBLIC_API_URL}/inventory/${selectedItem.id}`
+      : `${process.env.NEXT_PUBLIC_API_URL}/inventory`;
+    const method = isEditing ? "PUT" : "POST";
+
+    try {
+      const res = await fetch(url, {
+        method: method,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(
+          err.message ||
+            `Error al ${isEditing ? "actualizar" : "crear"} el insumo`
         );
-      } else {
-        const newItem: InventoryItem = { ...data, id: crypto.randomUUID() };
-        setItems((prev) => [newItem, ...prev]);
       }
-      setIsSubmitting(false);
+
+      // Éxito
       closeEditModal();
-    }, 1500);
+      await fetchInventory(); // Recargar la lista de insumos
+      // Aquí mostrar un toast de éxito
+    } catch (error: any) {
+      console.error(error);
+      // Aquí mostrar un toast de error (quizás en el modal)
+      // setFormError(error.message); // Necesitarías un estado de error en el form
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // --- NUEVO: Handler para ELIMINAR (DELETE) ---
+  const confirmDelete = async () => {
+    if (!selectedItem) return;
+
+    setIsSubmitting(true); // Re-usamos isSubmitting para el modal de delete
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/inventory/${selectedItem.id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Error al eliminar el insumo");
+      }
+
+      // Éxito
+      closeDeleteModal();
+      await fetchInventory(); // Recargar la lista
+      // Aquí mostrar un toast de éxito
+    } catch (error) {
+      console.error(error);
+      // Aquí mostrar un toast de error
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -251,7 +344,6 @@ const DashboardInventoryPage = () => {
           <h1 className="text-3xl font-bold text-gray-900 mb-6">
             Sistema de Inventario
           </h1>
-
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8">
               <button
@@ -284,9 +376,7 @@ const DashboardInventoryPage = () => {
           </div>
         </div>
 
-        {/* ================================================= */}
-        {/* Dashboard View - MODIFICADO CON DATOS REALES     */}
-        {/* ================================================= */}
+        {/* Dashboard View (Conectado) */}
         {activeTab === "dashboard" && (
           <>
             {isLoadingDashboard ? (
@@ -295,7 +385,6 @@ const DashboardInventoryPage = () => {
               </div>
             ) : (
               <div className="space-y-8">
-                {/* KPI Cards - Ahora usan el estado 'stats' */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   <StatCard
                     title="Stock Bajo"
@@ -316,8 +405,6 @@ const DashboardInventoryPage = () => {
                     color="lime"
                   />
                 </div>
-
-                {/* Charts and Activity - Ahora usan 'chartData' y 'activityData' */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div className="lg:col-span-2">
                     <InventorySummaryChart
@@ -334,9 +421,7 @@ const DashboardInventoryPage = () => {
           </>
         )}
 
-        {/* ================================================= */}
-        {/* Inventory View - SIN CAMBIOS (aún usa mocks)     */}
-        {/* ================================================= */}
+        {/* Inventory View (AHORA CONECTADO) */}
         {activeTab === "inventory" && (
           <div>
             <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -350,7 +435,7 @@ const DashboardInventoryPage = () => {
                   <h2 className="text-xl font-semibold">Insumos en Bodega</h2>
                   <div className="w-full sm:w-80">
                     <SearchBar
-                      placeholder=""
+                      placeholder="Buscar por nombre o categoría..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -358,7 +443,12 @@ const DashboardInventoryPage = () => {
                 </div>
               </Card.Header>
               <Card.Body>
-                {filteredItems.length === 0 && searchTerm ? (
+                {/* --- NUEVO: Usar isLoadingInventory --- */}
+                {isLoadingInventory ? (
+                  <div className="flex justify-center items-center h-64">
+                    <Spinner label="Cargando inventario..." />
+                  </div>
+                ) : filteredItems.length === 0 && searchTerm ? (
                   <div className="text-center py-12">
                     <p className="text-gray-500">
                       No se encontraron insumos que coincidan con "{searchTerm}"
@@ -367,7 +457,7 @@ const DashboardInventoryPage = () => {
                 ) : (
                   <InventoryTable
                     items={filteredItems}
-                    isLoading={false} // Esta es la variable de la pestaña inventario
+                    isLoading={false} // La carga principal ya se manejó arriba
                     onEdit={handleEdit}
                     onDelete={handleDelete}
                   />
@@ -378,7 +468,7 @@ const DashboardInventoryPage = () => {
         )}
       </div>
 
-      {/* --- (Modales - Sin cambios) --- */}
+      {/* Delete Modal (Ahora usa isSubmitting) */}
       <Modal isOpen={isDeleteModalOpen} onClose={closeDeleteModal}>
         <Modal.Header onClose={closeDeleteModal}>
           Confirmar Eliminación
@@ -389,31 +479,39 @@ const DashboardInventoryPage = () => {
             <span className="font-semibold">{selectedItem?.name}</span>?
           </p>
           <p className="text-sm text-gray-600 mt-2">
-            Esta acción no se puede deshacer.
+            Esta acción marcará el insumo como inactivo (soft delete).
           </p>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={closeDeleteModal}>
+          <Button
+            variant="secondary"
+            onClick={closeDeleteModal}
+            disabled={isSubmitting}
+          >
             Cancelar
           </Button>
-          <Button variant="danger" onClick={confirmDelete}>
-            Eliminar
+          <Button
+            variant="danger"
+            onClick={confirmDelete}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? <Spinner size="sm" /> : "Eliminar"}
           </Button>
         </Modal.Footer>
       </Modal>
 
+      {/* Edit/Create Modal (Formulario se pasa aquí, no en el body) */}
       <Modal isOpen={isEditModalOpen} onClose={closeEditModal}>
         <Modal.Header onClose={closeEditModal}>
           {selectedItem?.id ? "Editar Insumo" : "Crear Nuevo Insumo"}
         </Modal.Header>
-        <Modal.Body>
-          <InventoryForm
-            itemToEdit={selectedItem}
-            onSubmit={handleSubmitForm}
-            onCancel={closeEditModal}
-            isSubmitting={isSubmitting}
-          />
-        </Modal.Body>
+        {/* --- MODIFICADO: Pasamos el formulario como hijo directo del Modal --- */}
+        <InventoryForm
+          itemToEdit={selectedItem}
+          onSubmit={handleSubmitForm}
+          onCancel={closeEditModal}
+          isSubmitting={isSubmitting}
+        />
       </Modal>
     </div>
   );

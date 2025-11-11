@@ -145,7 +145,7 @@ const PendingItemsSummary = ({ items }: { items: SummaryItem[] }) => {
 const RequestsPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [requests, setRequests] = useState<RequestSummary[]>([]);
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const router = useRouter();
 
   const [isDetailsModalOpen, setDetailsModalOpen] = useState(false);
@@ -156,11 +156,16 @@ const RequestsPage = () => {
 
   // (fetchRequests - sin cambios)
   const fetchRequests = async () => {
-    if (!token) return;
+    if (!token || !user) return;
     setIsLoading(true);
     try {
+      const endpoint =
+        user.role === "ADMIN" || user.role === "MANAGER"
+          ? "/requests/all"
+          : "/requests/my";
+
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/requests/all`,
+        `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`, // [MODIFICADO]
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -185,7 +190,7 @@ const RequestsPage = () => {
 
   useEffect(() => {
     fetchRequests();
-  }, [token]);
+  }, [token, user]);
 
   // (activeItemsSummary - sin cambios)
   const activeItemsSummary = useMemo(() => {

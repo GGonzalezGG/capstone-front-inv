@@ -65,7 +65,7 @@ const HistoryPage = () => {
   // 5. Ajustar estados iniciales
   const [isLoading, setIsLoading] = useState(true);
   const [historyItems, setHistoryItems] = useState<RequestHistoryItem[]>([]);
-  const { token } = useAuth(); // 6. Obtener token
+  const { token, user } = useAuth(); // 6. Obtener token
 
   const [isDetailsModalOpen, setDetailsModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<RequestHistoryItem | null>(
@@ -74,7 +74,7 @@ const HistoryPage = () => {
 
   // 7. useEffect para cargar los datos
   useEffect(() => {
-    if (!token) {
+    if (!token || !user) {
       setIsLoading(false); // Si no hay token, no podemos cargar nada
       return;
     }
@@ -82,9 +82,13 @@ const HistoryPage = () => {
     const fetchHistory = async () => {
       setIsLoading(true);
       try {
-        // Asumimos que esta vista es para Admins/Managers y trae todo
+        const endpoint =
+          user.role === "ADMIN" || user.role === "MANAGER"
+            ? "/requests/all"
+            : "/requests/my";
+
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/requests/all`,
+          `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`, // [MODIFICADO]
           {
             headers: {
               Authorization: `Bearer ${token}`,

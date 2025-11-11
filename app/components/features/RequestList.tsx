@@ -1,21 +1,27 @@
 "use client";
 
-import React from 'react';
-import { Package, Clock, CheckCircle, XCircle, User, Calendar, Stethoscope } from 'lucide-react';
-import Card from '../ui/Card';
-import Badge from '../ui/Badge';
-import Button from '../ui/Button';
-import Spinner from '../ui/Spinner';
+import React from "react";
+import {
+  Package,
+  Clock,
+  CheckCircle,
+  XCircle,
+  User,
+  Calendar,
+  Stethoscope,
+} from "lucide-react";
+import Card from "../ui/Card";
+import Badge from "../ui/Badge";
+import Button from "../ui/Button";
+import Spinner from "../ui/Spinner";
 
-// Types
+// (Types e Interface Props - Sin cambios)
 export interface RequestItemDetail {
   id: string;
   name: string;
   quantity: number;
 }
-
-export type RequestStatus = 'pending' | 'ready' | 'rejected';
-
+export type RequestStatus = "pending" | "ready" | "rejected";
 export interface RequestSummary {
   id: string;
   patientName: string;
@@ -24,55 +30,61 @@ export interface RequestSummary {
   createdAt: string;
   items: RequestItemDetail[];
 }
-
 interface RequestListProps {
   requests: RequestSummary[];
   isLoading: boolean;
   onViewDetails: (request: RequestSummary) => void;
   onApprove: (request: RequestSummary) => void;
   onReject: (request: RequestSummary) => void;
+  onComplete: (request: RequestSummary) => void;
+  onReopen: (request: RequestSummary) => void;
 }
 
-// Status configuration
-const statusConfig: Record<RequestStatus, { 
-  variant: 'warning' | 'success' | 'danger';
-  icon: React.ReactNode;
-  text: string;
-}> = {
-  'pending': { 
-    variant: 'warning',
+// (statusConfig y Lógica de Loading/Vacio - Sin cambios)
+const statusConfig: Record<
+  RequestStatus,
+  {
+    variant: "warning" | "success" | "danger";
+    icon: React.ReactNode;
+    text: string;
+  }
+> = {
+  pending: {
+    variant: "warning",
     icon: <Clock className="w-3.5 h-3.5" />,
-    text: 'Pendiente' 
+    text: "Pendiente",
   },
-  'ready': { 
-    variant: 'success',
+  ready: {
+    variant: "success",
     icon: <CheckCircle className="w-3.5 h-3.5" />,
-    text: 'Listo' 
+    text: "Listo",
   },
-  'rejected': { 
-    variant: 'danger',
+  rejected: {
+    variant: "danger",
     icon: <XCircle className="w-3.5 h-3.5" />,
-    text: 'Rechazado' 
+    text: "Rechazado",
   },
 };
 
-const RequestList: React.FC<RequestListProps> = ({ 
-  requests, 
-  isLoading, 
+const RequestList: React.FC<RequestListProps> = ({
+  requests,
+  isLoading,
   onViewDetails,
   onApprove,
-  onReject
+  onReject,
+  onComplete,
+  onReopen,
 }) => {
-  
   if (isLoading) {
+    // ... (spinner logic)
     return (
       <div className="flex justify-center items-center h-64">
         <Spinner label="Cargando peticiones..." />
       </div>
     );
   }
-
   if (requests.length === 0) {
+    // ... (no requests logic)
     return (
       <Card>
         <Card.Body>
@@ -94,37 +106,106 @@ const RequestList: React.FC<RequestListProps> = ({
     );
   }
 
+  // --- Helper para renderizar botones (MODIFICADO) ---
+  const renderActionButtons = (request: RequestSummary) => {
+    switch (request.status) {
+      // Caso 1: Pendiente (Sin cambios)
+      case "pending":
+        return (
+          <div className="grid grid-cols-2 gap-3 w-full">
+            <Button
+              variant="danger"
+              onClick={() => onReject(request)}
+              className="w-full flex items-center justify-center space-x-2 px-4 py-3"
+            >
+              <XCircle className="w-4 h-4" />
+              <span className="font-semibold">Rechazar</span>
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => onApprove(request)}
+              className="w-full flex items-center justify-center space-x-2 px-4 py-3"
+            >
+              <CheckCircle className="w-4 h-4" />
+              <span className="font-semibold">Marcar Listo</span>
+            </Button>
+          </div>
+        );
+
+      // Caso 2: Listo (Sin cambios, aún se puede reabrir)
+      case "ready":
+        return (
+          <div className="grid grid-cols-2 gap-3 w-full">
+            <Button
+              variant="secondary"
+              onClick={() => onReopen(request)}
+              className="w-full flex items-center justify-center space-x-2 px-4 py-3"
+            >
+              <Clock className="w-4 h-4" />
+              <span className="font-semibold">A Pendiente</span>
+            </Button>
+            <Button
+              variant="success"
+              onClick={() => onComplete(request)}
+              className="w-full flex items-center justify-center space-x-2 px-4 py-3"
+            >
+              <Package className="w-4 h-4" />
+              <span className="font-semibold">Completar Retiro</span>
+            </Button>
+          </div>
+        );
+
+      // --- Caso 3: Rechazado (MODIFICADO) ---
+      // Ya no se puede reabrir.
+      // Esta petición ni siquiera debería aparecer, pero si lo hace,
+      // solo permitimos "Ver Detalles".
+      case "rejected":
+        return (
+          <Button
+            variant="secondary"
+            onClick={() => onViewDetails(request)}
+            className="w-full flex items-center justify-center space-x-2 px-4 py-3"
+          >
+            <Package className="w-4 h-4" />
+            <span className="font-semibold">Ver Detalles</span>
+          </Button>
+        );
+
+      default:
+        // ... (fallback)
+        return null;
+    }
+  };
+
   return (
     <div className="space-y-5">
       {requests.map((request) => {
         const config = statusConfig[request.status];
-        const isPending = request.status === 'pending';
-        
+
         return (
           <Card key={request.id}>
-            {/* Header - Requester name on top with gradient background */}
+            {/* (Card.Header y Card.Body - sin cambios) */}
             <Card.Header>
+              {/* ... (código de header) ... */}
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start space-x-3 flex-1 min-w-0">
                   <div className="bg-white/20 backdrop-blur-sm rounded-lg p-2.5 mt-0.5">
                     <User className="w-5 h-5 text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    {/* Requester name on top */}
                     <h3 className="font-bold text-white text-lg mb-0.5 truncate">
                       {request.requesterName}
                     </h3>
-                    {/* Patient name below with icon */}
                     <div className="flex items-center space-x-1.5 text-blue-100">
                       <Stethoscope className="w-3.5 h-3.5 flex-shrink-0" />
                       <p className="text-sm truncate">
-                        <span className="font-medium">{request.patientName}</span>
+                        <span className="font-medium">
+                          {request.patientName}
+                        </span>
                       </p>
                     </div>
                   </div>
                 </div>
-                
-                {/* Status Badge */}
                 <div className="flex items-center space-x-1.5 bg-white px-3 py-1.5 rounded-full shadow-sm">
                   <Badge variant={config.variant}>
                     <span className="flex items-center space-x-1">
@@ -135,9 +216,8 @@ const RequestList: React.FC<RequestListProps> = ({
                 </div>
               </div>
             </Card.Header>
-
-            {/* Body - Items list */}
             <Card.Body>
+              {/* ... (código de body) ... */}
               <div className="flex items-center space-x-2 mb-3">
                 <div className="bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg p-1.5">
                   <Package className="w-4 h-4 text-white" />
@@ -146,10 +226,9 @@ const RequestList: React.FC<RequestListProps> = ({
                   Insumos Solicitados ({request.items.length})
                 </h4>
               </div>
-              
               <div className="bg-gradient-to-br from-gray-50 to-blue-50/30 rounded-xl p-4 space-y-2.5 border border-gray-100">
-                {request.items.map(item => (
-                  <div 
+                {request.items.map((item) => (
+                  <div
                     key={item.id}
                     className="flex items-center justify-between bg-white rounded-lg px-4 py-3 shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
                   >
@@ -162,57 +241,22 @@ const RequestList: React.FC<RequestListProps> = ({
                   </div>
                 ))}
               </div>
-
-              {/* Date */}
               <div className="flex items-center space-x-2 mt-4 px-3 py-2 bg-gradient-to-r from-gray-100 to-blue-50 rounded-lg border border-gray-200">
                 <div className="bg-blue-500 rounded-md p-1">
                   <Calendar className="w-3.5 h-3.5 text-white" />
                 </div>
                 <span className="text-xs font-medium text-gray-700">
-                  {new Date(request.createdAt).toLocaleString('es-CL', {
-                    day: '2-digit',
-                    month: 'long',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
+                  {new Date(request.createdAt).toLocaleString("es-CL", {
+                    day: "2-digit",
+                    month: "long",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
                   })}
                 </span>
               </div>
             </Card.Body>
-            
-            {/* Footer - Full-width buttons */}
-            <Card.Footer>
-              {isPending ? (
-                <div className="grid grid-cols-2 gap-3 w-full">
-                  <Button
-                    variant="danger"
-                    onClick={() => onReject(request)}
-                    className="w-full flex items-center justify-center space-x-2 px-4 py-3"
-                  >
-                    <XCircle className="w-4 h-4" />
-                    <span className="font-semibold">Rechazar</span>
-                  </Button>
-                  
-                  <Button
-                    variant="primary"
-                    onClick={() => onApprove(request)}
-                    className="w-full flex items-center justify-center space-x-2 px-4 py-3"
-                  >
-                    <CheckCircle className="w-4 h-4" />
-                    <span className="font-semibold">Marcar Listo</span>
-                  </Button>
-                </div>
-              ) : (
-                <Button
-                  variant="secondary"
-                  onClick={() => onViewDetails(request)}
-                  className="w-full flex items-center justify-center space-x-2 px-4 py-3"
-                >
-                  <Package className="w-4 h-4" />
-                  <span className="font-semibold">Ver Detalles</span>
-                </Button>
-              )}
-            </Card.Footer>
+            <Card.Footer>{renderActionButtons(request)}</Card.Footer>
           </Card>
         );
       })}

@@ -1,23 +1,37 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { Menu, X, User, Package, LayoutDashboard, Plus, LogOut , ScrollText } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
+import React, { useState, useEffect } from "react";
+import {
+  Menu,
+  X,
+  User,
+  Package,
+  LayoutDashboard,
+  Plus,
+  LogOut,
+  ScrollText,
+} from "lucide-react";
+import { useAuth } from "../../contexts/AuthContext";
 
 // Links de navegación con iconos
 const navigationLinks = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Peticiones', href: '/requestList', icon: Package },
-  { name: 'Crear Petición', href: '/requestForm', icon: Plus },
-  { name: 'Historial de Retiros', href: '/reqHistory', icon: ScrollText },
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Peticiones", href: "/requestList", icon: Package },
+  { name: "Crear Petición", href: "/requestForm", icon: Plus },
+  { name: "Historial de Retiros", href: "/reqHistory", icon: ScrollText },
 ];
 
 /**
  * Componente de enlace de navegación que se resalta automáticamente
  */
-function NavLink({ href, children, pathname, icon: Icon }: { 
-  href: string; 
-  children: React.ReactNode; 
+function NavLink({
+  href,
+  children,
+  pathname,
+  icon: Icon,
+}: {
+  href: string;
+  children: React.ReactNode;
   pathname: string;
   icon?: React.ComponentType<{ className?: string }>;
 }) {
@@ -31,8 +45,8 @@ function NavLink({ href, children, pathname, icon: Icon }: {
         transition-all duration-200 transform hover:scale-105
         ${
           isActive
-            ? 'bg-gradient-to-r from-lime-500 to-lime-600 text-white shadow-md'
-            : 'text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:text-blue-700'
+            ? "bg-gradient-to-r from-lime-500 to-lime-600 text-white shadow-md"
+            : "text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:text-blue-700"
         }
       `}
     >
@@ -48,7 +62,7 @@ function NavLink({ href, children, pathname, icon: Icon }: {
 export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [pathname, setPathname] = useState('');
+  const [pathname, setPathname] = useState("");
   const { logout } = useAuth();
 
   const handleLogOut = () => {
@@ -56,7 +70,7 @@ export default function Header() {
   };
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       setPathname(window.location.pathname);
     }
   }, []);
@@ -67,25 +81,21 @@ export default function Header() {
       if (isMobileMenuOpen) setIsMobileMenuOpen(false);
       if (isProfileOpen) setIsProfileOpen(false);
     };
-    
+
     if (isMobileMenuOpen || isProfileOpen) {
-      document.addEventListener('click', handleClickOutside);
+      document.addEventListener("click", handleClickOutside);
     }
-    
-    return () => document.removeEventListener('click', handleClickOutside);
+
+    return () => document.removeEventListener("click", handleClickOutside);
   }, [isMobileMenuOpen, isProfileOpen]);
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-30 bg-white shadow-lg border-b-2 border-blue-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          
           {/* Logo con gradiente */}
           <div className="flex-shrink-0">
-            <a 
-              href="/dashboard" 
-              className="flex items-center space-x-2 group"
-            >
+            <a href="/dashboard" className="flex items-center space-x-2 group">
               <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg p-2 transform transition-transform group-hover:scale-110">
                 <Package className="w-6 h-6 text-white" />
               </div>
@@ -98,9 +108,9 @@ export default function Header() {
           {/* Navegación de Escritorio */}
           <div className="hidden md:flex md:space-x-2">
             {navigationLinks.map((link) => (
-              <NavLink 
-                key={link.name} 
-                href={link.href} 
+              <NavLink
+                key={link.name}
+                href={link.href}
                 pathname={pathname}
                 icon={link.icon}
               >
@@ -129,16 +139,16 @@ export default function Header() {
 
               {/* Dropdown menu */}
               {isProfileOpen && (
-                <div 
+                <div
                   className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 animate-in fade-in slide-in-from-top-2 duration-200"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <a
-                    href="/profile"
+                    href="/admin"
                     className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:text-blue-700 transition-colors"
                   >
                     <User className="w-4 h-4" />
-                    <span>Ver Perfil</span>
+                    <span>Panel Admin</span>
                   </a>
                   <hr className="my-1 border-gray-200" />
                   <button
@@ -173,13 +183,12 @@ export default function Header() {
               </button>
             </div>
           </div>
-
         </div>
       </div>
 
       {/* Menú Móvil con animación */}
       {isMobileMenuOpen && (
-        <div 
+        <div
           className="md:hidden shadow-lg border-t border-gray-200 bg-white animate-in slide-in-from-top duration-300"
           id="mobile-menu"
           onClick={(e) => e.stopPropagation()}
@@ -188,7 +197,7 @@ export default function Header() {
             {navigationLinks.map((link) => {
               const isActive = pathname === link.href;
               const Icon = link.icon;
-              
+
               return (
                 <a
                   key={link.name}
@@ -199,8 +208,8 @@ export default function Header() {
                     transition-all duration-200
                     ${
                       isActive
-                        ? 'bg-gradient-to-r from-lime-500 to-lime-600 text-white shadow-md'
-                        : 'text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:text-blue-700'
+                        ? "bg-gradient-to-r from-lime-500 to-lime-600 text-white shadow-md"
+                        : "text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:text-blue-700"
                     }
                   `}
                 >
@@ -209,20 +218,20 @@ export default function Header() {
                 </a>
               );
             })}
-            
+
             {/* Separador */}
             <hr className="my-2 border-gray-200" />
-            
+
             {/* Opciones de perfil en móvil */}
             <a
-              href="/profile"
+              href="/admin"
               onClick={() => setIsMobileMenuOpen(false)}
               className="flex items-center space-x-3 px-4 py-3 rounded-lg text-base font-semibold text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:text-blue-700 transition-all duration-200"
             >
               <User className="w-5 h-5" />
-              <span>Mi Perfil</span>
+              <span>Panel Admin</span>
             </a>
-            
+
             <a
               href="/logout"
               onClick={() => setIsMobileMenuOpen(false)}

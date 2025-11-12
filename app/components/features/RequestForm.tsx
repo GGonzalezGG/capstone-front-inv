@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react'; // Importa useMemo
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import Spinner from '../ui/Spinner';
 import Card from '../ui/Card';
+import SearchableSelect, { SearchableOption } from '../ui/SearchableSelect'; // 1. Importa el nuevo componente
 
-// 1. Definir los tipos de datos
+// (Tus tipos de datos: AvailableStockItem, Patient, RequestLine, etc. permanecen igual)
 export interface AvailableStockItem {
   id: string;
   name: string;
@@ -27,26 +28,22 @@ interface RequestLine {
 }
 
 export interface RequestFormData {
-  patientId: string; // ID del paciente asociado
+  patientId: string;
   items: {
     itemId: string;
     quantity: number;
   }[];
 }
 
-// 2. Definir las props del componente
 interface RequestFormProps {
   availableItems: AvailableStockItem[];
-  patients: Patient[]; // Nueva prop para la lista de pacientes
+  patients: Patient[];
   onSubmit: (data: RequestFormData) => void;
   onCancel: () => void;
   isSubmitting: boolean;
 }
 
-/**
- * Formulario para crear una nueva petición de insumos,
- * asociándola a un paciente.
- */
+
 const RequestForm: React.FC<RequestFormProps> = ({
   availableItems,
   patients,
@@ -56,19 +53,32 @@ const RequestForm: React.FC<RequestFormProps> = ({
 }) => {
   const [requestLines, setRequestLines] = useState<RequestLine[]>([]);
   
-  // Nuevos estados para el paciente y el formulario de item
   const [selectedPatientId, setSelectedPatientId] = useState<string>('');
   const [selectedItemId, setSelectedItemId] = useState<string>('');
   const [currentQuantity, setCurrentQuantity] = useState<string>("1");
   const [error, setError] = useState<string | null>(null);
 
-  // 3. Handlers para el formulario
-  
+  // 2. Transforma los datos de props al formato que espera SearchableSelect
+  // Usamos useMemo para que esto no se recalcule en cada render
+  const patientOptions: SearchableOption[] = useMemo(() =>
+    patients.map(patient => ({
+      value: patient.id,
+      label: patient.name,
+    })),
+  [patients]);
+
+  const itemOptions: SearchableOption[] = useMemo(() =>
+    availableItems.map(item => ({
+      value: item.id,
+      label: `${item.name} (Stock: ${item.stock})`,
+    })),
+  [availableItems]);
+
+
+  // (El resto de tus Handlers: handleAddItem, handleRemoveItem, handleSubmit... permanecen igual)
   const handleAddItem = () => {
     setError(null);
-
     const quantityNumber = parseInt(currentQuantity) || 0;
-
     if (!selectedItemId) {
       setError('Por favor, selecciona un insumo.');
       return;
@@ -81,15 +91,12 @@ const RequestForm: React.FC<RequestFormProps> = ({
       setError('Este insumo ya ha sido añadido a la lista.');
       return;
     }
-
     const itemDetails = availableItems.find(i => i.id === selectedItemId);
     if (!itemDetails) return;
-
     if (quantityNumber > itemDetails.stock) {
       setError(`Stock insuficiente. Solo quedan ${itemDetails.stock} unidades de "${itemDetails.name}".`);
       return;
     }
-
     const newRequestLine: RequestLine = {
       id: crypto.randomUUID(),
       itemId: itemDetails.id,
@@ -98,8 +105,7 @@ const RequestForm: React.FC<RequestFormProps> = ({
       stock: itemDetails.stock,
     };
     setRequestLines(prevLines => [...prevLines, newRequestLine]);
-
-    setSelectedItemId('');
+    setSelectedItemId(''); // Resetea el select de insumos
     setCurrentQuantity("1");
   };
 
@@ -110,19 +116,14 @@ const RequestForm: React.FC<RequestFormProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-
-    // Validar que se haya seleccionado un paciente
     if (!selectedPatientId) {
       setError('Debes asociar la petición a un paciente.');
       return;
     }
-
     if (requestLines.length === 0) {
       setError('Debes añadir al menos un insumo a la petición.');
       return;
     }
-    
-    // Formatear los datos para el backend
     const formattedData: RequestFormData = {
       patientId: selectedPatientId,
       items: requestLines.map(line => ({
@@ -130,9 +131,9 @@ const RequestForm: React.FC<RequestFormProps> = ({
         quantity: line.quantity,
       })),
     };
-    
     onSubmit(formattedData);
   };
+
 
   return (
     <Card>
@@ -142,53 +143,38 @@ const RequestForm: React.FC<RequestFormProps> = ({
         </Card.Header>
         
         <Card.Body>
-          {/* --- Sección de Paciente --- */}
+          {/* --- 3. REEMPLAZO: Sección de Paciente --- */}
           <fieldset className="space-y-2 mb-6" disabled={isSubmitting}>
-            <label htmlFor="patientSelect" className="block text-sm font-medium text-gray-900">
-              Asociar Petición a Paciente (Obligatorio)
-            </label>
-            <select
+            <SearchableSelect
               id="patientSelect"
+              label="Asociar Petición a Paciente (Obligatorio)"
+              options={patientOptions}
               value={selectedPatientId}
-              onChange={(e) => setSelectedPatientId(e.target.value)}
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md shadow-sm"
-            >
-              <option value="" disabled>Selecciona un paciente...</option>
-              {patients.map(patient => (
-                <option key={patient.id} value={patient.id}>
-                  {patient.name}
-                </option>
-              ))}
-            </select>
+              onChange={(value) => setSelectedPatientId(value)} // Actualiza el ID
+              placeholder="Escribe para buscar un paciente..."
+              disabled={isSubmitting}
+            />
           </fieldset>
 
-          {/* --- Línea divisoria --- */}
           <hr className="my-6 border-gray-200" />
 
-          {/* --- Sección para Añadir Items --- */}
           <fieldset className="space-y-4" disabled={isSubmitting}>
             <p className="text-sm text-gray-600">Añade los insumos que necesitas.</p>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-              {/* Selector de Insumos */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+              {/* --- 4. REEMPLAZO: Selector de Insumos --- */}
               <div className="md:col-span-2">
-                <label htmlFor="itemSelect" className="block text-sm font-medium text-gray-700">Insumo</label>
-                <select
+                <SearchableSelect
                   id="itemSelect"
+                  label="Insumo"
+                  options={itemOptions}
                   value={selectedItemId}
-                  onChange={(e) => setSelectedItemId(e.target.value)}
-                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md shadow-sm"
-                >
-                  <option value="" disabled>Selecciona un insumo...</option>
-                  {availableItems.map(item => (
-                    <option key={item.id} value={item.id}>
-                      {item.name} (Stock: {item.stock})
-                    </option>
-                  ))}
-                </select>
+                  onChange={(value) => setSelectedItemId(value)} // Actualiza el ID
+                  placeholder="Escribe para buscar un insumo..."
+                  disabled={isSubmitting}
+                />
               </div>
               
-              {/* Input de Cantidad */}
               <div>
                 <Input
                   label="Cantidad"
@@ -197,7 +183,6 @@ const RequestForm: React.FC<RequestFormProps> = ({
                   type="number"
                   value={currentQuantity}
                   onChange={(e) => {
-                    // Solo permite números (o un string vacío)
                     const val = e.target.value.replace(/[^0-9]/g, '');
                     setCurrentQuantity(val);
                   }}
@@ -210,7 +195,7 @@ const RequestForm: React.FC<RequestFormProps> = ({
             </Button>
           </fieldset>
           
-          {/* --- Sección de Items a Solicitar --- */}
+          {/* (El resto del componente: lista de insumos y Card.Footer) permanece igual */}
           <div className="space-y-3 mt-6">
             <h3 className="text-lg font-medium text-gray-800">Insumos en esta Petición</h3>
             {requestLines.length === 0 ? (
@@ -239,15 +224,12 @@ const RequestForm: React.FC<RequestFormProps> = ({
           </div>
         </Card.Body>
 
-        {/* --- Acciones del Formulario --- */}
         <Card.Footer>
           <div className="flex flex-col sm:flex-row justify-between items-center sm:space-x-3">
-            {/* Mensaje de Error General */}
             <div className="w-full sm:w-auto mb-3 sm:mb-0">
               {error && <p className="text-sm text-red-600">{error}</p>}
             </div>
             
-            {/* Botones */}
             <div className="flex space-x-3 self-end">
               <Button 
                 type="button" 
@@ -273,4 +255,3 @@ const RequestForm: React.FC<RequestFormProps> = ({
 };
 
 export default RequestForm;
-

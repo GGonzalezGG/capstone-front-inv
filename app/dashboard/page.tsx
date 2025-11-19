@@ -119,11 +119,28 @@ const CheckIcon = () => (
   </svg>
 );
 
+const ClockIcon = () => (
+  <svg
+    className="h-6 w-6"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+    />
+  </svg>
+);
+
 // --- (Tipos del Dashboard - Sin cambios) ---
 interface DashboardStats {
   lowStock: number;
   totalItems: number;
   pendingRequests: number;
+  expiringSoon: number;
 }
 interface ChartDataItem {
   name: string;
@@ -150,6 +167,7 @@ const DashboardInventoryPage = () => {
     lowStock: 0,
     totalItems: 0,
     pendingRequests: 0,
+    expiringSoon: 0,
   });
   const [chartData, setChartData] = useState<ChartDataItem[]>([]);
   const [activityData, setActivityData] = useState<ActivityItem[]>([]);
@@ -391,6 +409,13 @@ const DashboardInventoryPage = () => {
                     value={stats.lowStock}
                     icon={<AlertIcon />}
                     color="yellow"
+                  />
+                  <StatCard
+                    title="Próx. a Vencer"
+                    value={stats.expiringSoon}
+                    icon={<ClockIcon />}
+                    color="red" 
+                    description="En los próx. 7 días"
                   />
                   <StatCard
                     title="Total de Insumos"

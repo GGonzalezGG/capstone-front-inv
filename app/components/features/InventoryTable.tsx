@@ -7,7 +7,11 @@ import Button from "../ui/Button";
 import Spinner from "../ui/Spinner";
 
 // 1. Define el tipo de dato para un insumo del inventario
-export type InventoryItemStatus = "available" | "low_stock" | "expired" | "expiring_soon";
+export type InventoryItemStatus =
+  | "available"
+  | "low_stock"
+  | "expired"
+  | "expiring_soon";
 
 export interface InventoryItem {
   id: string;
@@ -88,7 +92,9 @@ const InventoryTable: React.FC<InventoryTableProps> = ({
       accessor: "expiryDate",
       render: (item) =>
         item.expiryDate ? (
-          new Date(item.expiryDate).toLocaleDateString("es-CL")
+          new Date(item.expiryDate).toLocaleDateString("es-CL", {
+            timeZone: "UTC",
+          })
         ) : (
           <span className="text-gray-400">N/A</span>
         ),

@@ -7,7 +7,7 @@ import Button from "../ui/Button";
 import Spinner from "../ui/Spinner";
 
 // 1. Define el tipo de dato para un insumo del inventario
-type InventoryItemStatus = "available" | "low_stock" | "expired";
+export type InventoryItemStatus = "available" | "low_stock" | "expired" | "expiring_soon";
 
 export interface InventoryItem {
   id: string;
@@ -31,11 +31,12 @@ interface InventoryTableProps {
 // Mapeo de status a las props del Badge para consistencia
 const statusConfig: Record<
   InventoryItemStatus,
-  { variant: "success" | "warning" | "danger"; text: string }
+  { variant: "success" | "warning" | "danger" | "info"; text: string }
 > = {
   available: { variant: "success", text: "Disponible" },
-  low_stock: { variant: "warning", text: "Stock Bajo" },
+  low_stock: { variant: "info", text: "Stock Bajo" },
   expired: { variant: "danger", text: "Vencido" },
+  expiring_soon: { variant: "warning", text: "Próx. a Vencer" },
 };
 
 /**

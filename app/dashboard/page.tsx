@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import InventoryTable, {
   InventoryItem,
+  InventoryItemStatus,
 } from "../components/features/InventoryTable";
 import InventorySummaryChart from "../components/features/InventorySummaryChart";
 import RecentActivityFeed, {
@@ -33,21 +34,36 @@ interface BackendInventoryItem {
 }
 
 // --- NUEVO: Función para mapear datos del Backend al Frontend ---
-/**
- * Transforma un item del backend al formato que espera InventoryTable.
- * Deriva el 'status' basado en la lógica de negocio.
- */
 const mapBackendItemToFrontend = (
   item: BackendInventoryItem
 ): InventoryItem => {
-  let status: InventoryItem["status"] = "available";
+  let status: InventoryItemStatus = "available";
+
   const now = new Date();
+  // Configurar hora a 00:00:00 para comparaciones precisas de días
+  now.setHours(0, 0, 0, 0);
+
   const expiry = item.expiryDate ? new Date(item.expiryDate) : null;
+
+  // Calcular fecha dentro de 7 días
+  const oneWeekFromNow = new Date(now);
+  oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
+
+  // Lógica de prioridad de estados:
+  // 1. Vencido (Fecha pasada) o Stock 0 crítico
+  // 2. Próximo a vencer (Fecha <= 7 días)
+  // 3. Stock Bajo (Cantidad < Umbral)
+  // 4. Disponible
 
   if (expiry && expiry < now) {
     status = "expired";
   } else if (item.quantityInStock <= 0) {
+    // Si no hay stock, técnicamente no está disponible (podría ser low_stock o expired según lógica de negocio)
+    // Aquí lo trataremos como "Vencido/Agotado" crítico
     status = "expired";
+  } else if (expiry && expiry <= oneWeekFromNow) {
+    // Si vence en la próxima semana (y no ha vencido ya)
+    status = "expiring_soon";
   } else if (item.quantityInStock < item.lowStockThreshold) {
     status = "low_stock";
   }
@@ -59,10 +75,8 @@ const mapBackendItemToFrontend = (
     quantity: item.quantityInStock,
     status: status,
     expiryDate: item.expiryDate || undefined,
-
-    // --- CAMPOS AÑADIDOS ---
-    description: item.description, //
-    lowStockThreshold: item.lowStockThreshold, //
+    description: item.description,
+    lowStockThreshold: item.lowStockThreshold,
   };
 };
 
@@ -135,7 +149,7 @@ const ClockIcon = () => (
   </svg>
 );
 
-// --- (Tipos del Dashboard - Sin cambios) ---
+// --- (Tipos del Dashboard) ---
 interface DashboardStats {
   lowStock: number;
   totalItems: number;
@@ -160,6 +174,9 @@ const DashboardInventoryPage = () => {
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | InventoryItemStatus>(
+    "all"
+  ); // Estado para el filtro
 
   // --- Estados de la pestaña "Dashboard" (de la etapa anterior) ---
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(true);
@@ -233,15 +250,27 @@ const DashboardInventoryPage = () => {
     }
   }, [token, activeTab]); // Se recarga si el token cambia o si el usuario cambia a esta pestaña
 
-  // --- (Lógica de filtrado - Sin cambios) ---
+  // --- (Lógica de filtrado) ---
   const filteredItems = useMemo(() => {
-    if (!searchTerm) return items;
-    return items.filter(
-      (item) =>
-        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.category.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [items, searchTerm]);
+    let result = items;
+
+    // 1. Filtrar por búsqueda de texto
+    if (searchTerm) {
+      const lowerSearch = searchTerm.toLowerCase();
+      result = result.filter(
+        (item) =>
+          item.name.toLowerCase().includes(lowerSearch) ||
+          item.category.toLowerCase().includes(lowerSearch)
+      );
+    }
+
+    // 2. Filtrar por estado seleccionado
+    if (statusFilter !== "all") {
+      result = result.filter((item) => item.status === statusFilter);
+    }
+
+    return result;
+  }, [items, searchTerm, statusFilter]);
 
   // --- (Handlers de Modales - Sin cambios) ---
   const handleEdit = (item: InventoryItem) => {
@@ -414,7 +443,7 @@ const DashboardInventoryPage = () => {
                     title="Próx. a Vencer"
                     value={stats.expiringSoon}
                     icon={<ClockIcon />}
-                    color="red" 
+                    color="red"
                     description="En los próx. 7 días"
                   />
                   <StatCard
@@ -446,7 +475,7 @@ const DashboardInventoryPage = () => {
           </>
         )}
 
-        {/* Inventory View (AHORA CONECTADO) */}
+        {/* Inventory View */}
         {activeTab === "inventory" && (
           <div>
             <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -456,33 +485,59 @@ const DashboardInventoryPage = () => {
             </div>
             <Card>
               <Card.Header>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <h2 className="text-xl font-semibold">Insumos en Bodega</h2>
-                  <div className="w-full sm:w-80">
-                    <SearchBar
-                      placeholder="Buscar por nombre o categoría..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                  <h2 className="text-xl font-semibold whitespace-nowrap">
+                    Insumos en Bodega
+                  </h2>
+
+                  <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+                    {/* Selector de Estado */}
+                    <div className="sm:w-48">
+                      <p className="py-1 text-sm">Filtra por estado</p>
+                      <select
+                        value={statusFilter}
+                        onChange={(e) =>
+                          setStatusFilter(
+                            e.target.value as "all" | InventoryItemStatus
+                          )
+                        }
+                        className="block w-full bg-white text-gray-900 pl-3 pr-8 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border shadow-sm"
+                      >
+                        <option value="all">Todos los estados</option>
+                        <option value="available">Disponible</option>
+                        <option value="low_stock">Stock Bajo</option>
+                        <option value="expiring_soon">Próx. a Vencer</option>
+                        <option value="expired">Vencido</option>
+                      </select>
+                    </div>
+
+                    {/* Barra de Búsqueda */}
+                    <div className="w-full sm:w-64">
+                      <SearchBar
+                        placeholder="Buscar insumo..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        inputClassName="py-2" // Ajuste menor de estilo
+                      />
+                    </div>
                   </div>
                 </div>
               </Card.Header>
               <Card.Body>
-                {/* --- NUEVO: Usar isLoadingInventory --- */}
                 {isLoadingInventory ? (
                   <div className="flex justify-center items-center h-64">
                     <Spinner label="Cargando inventario..." />
                   </div>
-                ) : filteredItems.length === 0 && searchTerm ? (
+                ) : filteredItems.length === 0 ? (
                   <div className="text-center py-12">
                     <p className="text-gray-500">
-                      No se encontraron insumos que coincidan con "{searchTerm}"
+                      No se encontraron insumos con los filtros seleccionados.
                     </p>
                   </div>
                 ) : (
                   <InventoryTable
                     items={filteredItems}
-                    isLoading={false} // La carga principal ya se manejó arriba
+                    isLoading={false}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
                   />

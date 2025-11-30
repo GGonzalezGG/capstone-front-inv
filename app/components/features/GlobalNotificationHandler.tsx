@@ -68,6 +68,8 @@ const GlobalNotificationHandler: React.FC = () => {
       variant = "success"; // Usamos 'success' para nuevas peticiones
     } else if (notification.type === "LOW_STOCK") {
       variant = "error"; // Usamos 'error' para alertas de stock (más urgente)
+    } else if (notification.type === "EXPIRY_ALERT") {
+      variant = "info";
     }
 
     const newNotification: ToastNotification = {

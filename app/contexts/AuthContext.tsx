@@ -1,31 +1,16 @@
 "use client";
 
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  ReactNode,
-} from "react";
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { jwtDecode } from "jwt-decode"; // 1. Importar jwt-decode
+import apiClient from "../lib/apiClients"; 
 
-// 2. Definir la info del usuario y el payload del token
 interface User {
   id: string;
   role: "ADMIN" | "MANAGER" | "NURSE";
 }
-interface JwtPayload {
-  id: string;
-  role: "ADMIN" | "MANAGER" | "NURSE";
-  iat: number;
-  exp: number;
-}
 
-// 3. Actualizar el tipo del Contexto
 interface AuthContextType {
-  token: string | null;
-  user: User | null; // <-- AÑADIDO
+  user: User | null; 
   isLoading: boolean;
   error: string | null;
   login: (email: string, pass: string) => Promise<void>;
@@ -35,31 +20,21 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [token, setToken] = useState<string | null>(null);
-  const [user, setUser] = useState<User | null>(null); // <-- AÑADIDO
+  const [user, setUser] = useState<User | null>(null); 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
+    // Al recargar la página, recuperamos solo la información visual del usuario
+    // El token de verdad está seguro en la cookie
     try {
-      const storedToken = localStorage.getItem("jwtToken");
-      if (storedToken) {
-        // 4. Decodificar el token al cargar
-        const decoded = jwtDecode<JwtPayload>(storedToken);
-
-        // Verificar si el token ha expirado
-        if (decoded.exp * 1000 > Date.now()) {
-          setToken(storedToken);
-          setUser({ id: decoded.id, role: decoded.role });
-        } else {
-          // Si expiró, limpiarlo
-          localStorage.removeItem("jwtToken");
-        }
+      const storedUser = localStorage.getItem("authUser");
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
       }
     } catch (e) {
-      console.error("Error al decodificar token de localStorage", e);
-      localStorage.removeItem("jwtToken");
+      console.error("Error al leer usuario de localStorage", e);
     }
     setIsLoading(false);
   }, []);
@@ -68,48 +43,47 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password: pass }),
+      // Usamos nuestro apiClient que ya tiene withCredentials: true
+      const res = await apiClient.post("/auth/login", { 
+        email, 
+        password: pass 
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Error al iniciar sesión");
 
-      // 5. Guardar token y decodificar usuario
-      const decoded = jwtDecode<JwtPayload>(data.token);
-      setToken(data.token);
-      setUser({ id: decoded.id, role: decoded.role });
-      localStorage.setItem("jwtToken", data.token);
+      // El backend nos devuelve el usuario (pero la cookie ya se guardó sola)
+      const userData = res.data.user;
+      
+      setUser(userData);
+      localStorage.setItem("authUser", JSON.stringify(userData));
 
       router.push("/dashboard");
     } catch (err: any) {
-      setError(err.message);
+      // Manejo de errores con axios
+      const errorMessage = err.response?.data?.message || err.message || "Error al iniciar sesión";
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = () => {
-    setToken(null);
-    setUser(null); // <-- AÑADIDO
-    localStorage.removeItem("jwtToken");
-    router.push("/login");
+  const logout = async () => {
+    try {
+      // 1. Avisamos al backend para que destruya la cookie HttpOnly
+      await apiClient.post("/auth/logout");
+    } catch (error) {
+      console.error("Error al cerrar sesión en el servidor:", error);
+    } finally {
+      // 2. Limpiamos la información visual (UI) del usuario
+      setUser(null); 
+      localStorage.removeItem("authUser");
+      
+      // 3. Redirigimos al login
+      router.push("/login");
+    }
   };
 
-  const value = {
-    token,
-    user, // <-- AÑADIDO
-    isLoading,
-    error,
-    login,
-    logout,
-  };
+  const value = { user, isLoading, error, login, logout };
 
-  // ... (resto del provider)
-  if (isLoading) {
-    return null;
-  }
+  if (isLoading) return null;
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
